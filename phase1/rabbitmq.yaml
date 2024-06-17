@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    kubernetes.io/metadata.name: rabbitmq
+  name: rabbitmq
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rabbitmq
+  namespace: rabbitmq
+  labels:
+    app: rabbitmq
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+    spec:
+      volumes:
+      - name: vol
+        persistentVolumeClaim:
+          claimName: rabbitmq-storage
+      containers:
+      - name: rabbitmq
+        image: rabbitmq
+        ports:
+        - containerPort: 15672
+        envFrom:
+        - secretRef:
+            name: rabbitmq-secret
+        volumeMounts:
+        - name: vol
+          mountPath: /var/lib/rabbitmq
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+  namespace: rabbitmq
+spec:
+  type: ClusterIP
+  selector:
+    app: rabbitmq
+  ports:
+  - protocol: TCP
+    port: 15672
+    targetPort: 15672
+
+---
+apiVersion: v1
+data:
+  RABBITMQ_DEFAULT_USER: cmFiYml0Cg==
+  RABBITMQ_DEFAULT_PASS: c3VwZXJzZWNyZXRwYXNzd29yZA==
+kind: Secret
+metadata:
+  name: rabbitmq-secret
+  namespace: rabbitmq
+type: Opaque
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: rabbitmq-storage
+  namespace: rabbitmq
+spec:
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 30Mi
+  # storageClassName: default

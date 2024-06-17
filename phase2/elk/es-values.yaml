@@ -1,0 +1,11 @@
+replicas: 1
+minimumMasterNodes: 1
+
+createCert: false
+protocol: http
+
+volumeClaimTemplate:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 30Mi

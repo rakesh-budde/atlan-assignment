@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend2-deployment
+  namespace: backend
+  labels:
+    app: backend2
+spec:
+  replicas: 1
+  strategy:
+    type: "RollingUpdate"
+  selector:
+    matchLabels:
+      app: backend2
+  template:
+    metadata:
+      labels:
+        app: backend2
+    spec:
+      containers:
+      - name: backend2
+        image: nginx #BACKEND_APP:TAG
+        ports:
+        - containerPort: 8124
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "250m"
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        envFrom:
+        - secretRef:
+            name: app-secret
+        - configMapRef:
+            name: app-configs
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend2
+  namespace: backend
+spec:
+  type: ClusterIP
+  selector:
+    app: backend2
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8124

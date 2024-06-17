@@ -1,0 +1,127 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/enforce-version: v1.30
+    pod-security.kubernetes.io/warn: baseline
+    pod-security.kubernetes.io/warn-version: v1.30
+  name: frontend
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+  namespace: frontend
+  labels:
+    app: frontend
+spec:
+  strategy:
+    type: "RollingUpdate"
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: nginx #REACT_APP:TAG
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "250m"
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        securityContext:
+          allowPrivilegeEscalation: false
+          seccompProfile:
+            type: RuntimeDefault
+        envFrom:
+        - secretRef:
+            name: app-secret
+        - configMapRef:
+            name: app-configs
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: frontend
+spec:
+  type: ClusterIP
+  selector:
+    app: frontend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-configs
+  namespace: frontend
+data:
+  APP1_HOST: "backend1"
+  APP1_PORT: "80"
+  APP2_HOST: "backend2"
+  APP2_PORT: "80"
+  RABBITMQ_HOST: "rabbitmq"
+  RABBITMQ_PORT: "15672"
+---
+apiVersion: v1
+data:
+  RABBITMQ_USER: cmFiYml0Cg==
+  RABBITMQ_PASS: c3VwZXJzZWNyZXRwYXNzd29yZA==
+kind: Secret
+metadata:
+  name: app-secret
+  namespace: frontend
+type: Opaque
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: app-reader
+rules:
+- apiGroups: [""]
+  resources: ["namespaces", "pods", "services"]
+  verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: app-reader
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: frontend
+roleRef:
+  kind: ClusterRole
+  name: app-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend-ingress
+  namespace: frontend
+spec:
+  ingressClassName: nginx # Depends on the ingress controller
+  rules:
+  - host: localhost
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend
+            port:
+              number: 80
