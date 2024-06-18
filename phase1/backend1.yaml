@@ -82,10 +82,11 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: app-reader
+  namespace: backend
 subjects:
 - kind: ServiceAccount
   name: default
-  namespace: frontend
+  namespace: backend
 roleRef:
   kind: ClusterRole
   name: app-reader
